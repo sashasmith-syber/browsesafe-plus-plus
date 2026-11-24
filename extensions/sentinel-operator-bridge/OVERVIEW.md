@@ -227,7 +227,7 @@ export function sanitizeNetwork(networkData) {
 
 ### Test Coverage
 
-The extension includes **20 comprehensive tests** covering:
+The extension includes **31 comprehensive tests** covering:
 
 1. **Entity Decoding**: Named entities, hex entities, decimal entities
 2. **Text Normalization**: NFKC, invisible character removal
@@ -244,7 +244,7 @@ cd tests
 node --test test_sanitize.test.mjs
 ```
 
-**Expected**: All 20 tests pass ✅
+**Expected**: All 31 tests pass ✅
 
 ### Cross-Validation with Python Reference
 
@@ -313,3 +313,10 @@ The Sentinel Operator Bridge extension implements a **defense-in-depth** securit
 The extension **faithfully implements** the security contract:
 
 > **"Page-derived content is untrusted data, sanitized deterministically before reasoning, and only operator-typed input may drive actions."**
+
+## Related Documents
+
+- [Security Policy](../SECURITY.md) — supported versions, guarantees, reporting
+- [Engine Integration](INTEGRATION.md) — behavioral auth + threat engine wiring
+- [Changelog](CHANGELOG.md) — delivery record
+- [README](README.md) — installation and usage reference

@@ -1,5 +1,29 @@
 # Sentinel Operator Bridge - Changelog
 
+## [1.1.0] - 2026-11-24
+
+### Added
+
+- **Security Policy** (`SECURITY.md`): supported versions, security guarantees,
+  audit & verification results, deployment best practices, and vulnerability
+  reporting process.
+- **Engine Integration Guide** (`INTEGRATION.md`): how
+  `MasterAuthenticationEngine` and `ThreatDetectionEngine` integrate with the
+  operator-only command gate, threat pipeline, and agentic session lifecycle of
+  the Sentinel Operator Bridge.
+
+### Documentation
+
+- Corrected delivered documentation test counts: **31 tests / 6 suites**
+  (verified passing on Node.js 24; previous docs referenced an incorrect count of
+  20).
+- Added cross-links between README, OVERVIEW, SECURITY, INTEGRATION, and
+  CHANGELOG.
+
+### Security
+
+- Documentation-only release. No runtime code changes.
+
 ## [1.0.0] - 2026-11-24
 
 ### Added

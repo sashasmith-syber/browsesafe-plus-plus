@@ -141,7 +141,7 @@ cd tests
 node --test test_sanitize.test.mjs
 ```
 
-All 20 tests should pass, covering:
+All **31 tests** should pass (6 suites), covering:
 - Entity decoding
 - Text normalization
 - Injection detection
@@ -149,6 +149,26 @@ All 20 tests should pass, covering:
 - Hidden content removal
 - Secret redaction
 - Combined attacks
+
+## Documentation
+
+- [Security Policy](SECURITY.md) — guarantees, audit results, vulnerability reporting
+- [Security Overview / Threat Model](OVERVIEW.md) — operating contract, threat model, limitations
+- [Changelog](CHANGELOG.md) — delivery record
+- [Engine Integration](INTEGRATION.md) — wiring `MasterAuthenticationEngine` + `ThreatDetectionEngine` into the bridge
+
+## Security Policy
+
+See [SECURITY.md](SECURITY.md) for the supported versions, security guarantees,
+audit & verification results, deployment best practices, and how to report
+vulnerabilities.
+
+## Engine Integration
+
+See [INTEGRATION.md](INTEGRATION.md) for how the behavioral
+`MasterAuthenticationEngine` and proactive `ThreatDetectionEngine` integrate
+with the Sentinel Operator Bridge as a defensive, aggressive ("angry dog"), or
+proactive security layer for agentic browsing.
 
 ## Verification
 

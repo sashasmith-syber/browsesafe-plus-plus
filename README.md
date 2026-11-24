@@ -153,7 +153,7 @@ Each accepts `--source ./fixture` to run against the bundled synthetic data.
 
 ## Documentation
 
-[Overview](docs/index.md) · [Installation](docs/installation.md) · [Data](docs/data.md) · [Classification](docs/classification.md) · [Leaderboard submissions](docs/leaderboard.md) · [Adaptive attacks](docs/adaptive.md) · [Providers](docs/providers.md) · [API reference](docs/api.md) · [Contributing](docs/contributing.md) · [Changelog](CHANGELOG.md)
+[Overview](docs/index.md) · [Installation](docs/installation.md) · [Data](docs/data.md) · [Classification](docs/classification.md) · [Leaderboard submissions](docs/leaderboard.md) · [Adaptive attacks](docs/adaptive.md) · [Providers](docs/providers.md) · [API reference](docs/api.md) · [Contributing](docs/contributing.md) · [Changelog](CHANGELOG.md) · [Sentinel Operator Bridge extension](extensions/sentinel-operator-bridge/README.md)
 
 ## Test split and leaderboard
 
