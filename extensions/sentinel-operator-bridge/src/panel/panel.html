@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sentinel Operator Bridge</title>
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1>Sentinel Operator Bridge</h1>
+      <p class="subtitle">Operator-Only Command Interface</p>
+    </header>
+    
+    <main class="main">
+      <section class="section" id="command-section">
+        <h2>Command Input</h2>
+        <p class="info">Only operator-typed input can drive actions. Page content is never executed.</p>
+        
+        <div class="input-group">
+          <label for="command">Command:</label>
+          <select id="command" class="command-select">
+            <option value="">-- Select Command --</option>
+            <option value="read_page">Read Current Page</option>
+            <option value="set_directive">Set Directive</option>
+            <option value="start_capture">Start Capture</option>
+            <option value="stop_capture">Stop Capture</option>
+            <option value="get_capture">Get Captured Content</option>
+            <option value="screenshot">Take Screenshot</option>
+          </select>
+        </div>
+        
+        <div class="input-group" id="data-group" style="display: none;">
+          <label for="data-input">Data:</label>
+          <textarea id="data-input" class="data-input" placeholder="Enter data for command..."></textarea>
+          <button id="paste-btn" class="btn btn-secondary">Paste (Sanitized)</button>
+        </div>
+        
+        <button id="execute-btn" class="btn btn-primary" disabled>Execute Command</button>
+      </section>
+      
+      <section class="section" id="output-section">
+        <h2>Output</h2>
+        <div id="output" class="output"></div>
+        <button id="clear-btn" class="btn btn-secondary">Clear Output</button>
+      </section>
+      
+      <section class="section" id="status-section">
+        <h2>Status</h2>
+        <div id="status" class="status">
+          <p>Service Worker: <span id="sw-status">Loading...</span></p>
+          <p>Capture Active: <span id="capture-status">Inactive</span></p>
+          <p>Captured Items: <span id="captured-count">0</span></p>
+        </div>
+      </section>
+      
+      <section class="section" id="directives-section">
+        <h2>Active Directives</h2>
+        <ul id="directives-list" class="directives-list"></ul>
+      </section>
+    </main>
+    
+    <footer class="footer">
+      <p>⚠️ <strong>SECURITY NOTICE:</strong> This extension enforces a strict operator-only command gate. 
+      Page-derived content is sanitized deterministically before reasoning. Only operator-typed 
+      input may drive actions. No click/fill/navigate primitives exist.</p>
+    </footer>
+  </div>
+  
+  <script src="../lib/sanitize_content.js" type="module"></script>
+  <script src="panel.js" type="module"></script>
+</body>
+</html>
