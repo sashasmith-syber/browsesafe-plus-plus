@@ -17,7 +17,13 @@ export const ALLOWED_COMMANDS = new Set([
   'ping',
   'arm',
   'disarm',
-  'kill_switch'
+  'kill_switch',
+  'move_object',
+  'fill_form',
+  'generate_post',
+  'generate_code',
+  'fix_machine',
+  'fix_app'
 ]);
 
 /**
@@ -61,9 +67,15 @@ export function isOperatorSender(sender) {
   const canonicalUrlObj = new URL(canonicalUrl);
   
   // Must have same protocol, host, and pathname
+  // Allow query parameters but NOT fragments (fragments could be used for phishing)
   if (senderUrlObj.protocol !== canonicalUrlObj.protocol ||
       senderUrlObj.host !== canonicalUrlObj.host ||
       senderUrlObj.pathname !== canonicalUrlObj.pathname) {
+    return false;
+  }
+  
+  // Reject if there's a fragment (hash) - this could be used for phishing
+  if (senderUrlObj.hash) {
     return false;
   }
   

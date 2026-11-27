@@ -172,7 +172,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
   }
   
   // Check if armed (for dangerous commands)
-  const requiresArmed = ['read_page', 'set_directive', 'start_capture', 'screenshot'];
+  const requiresArmed = ['read_page', 'set_directive', 'start_capture', 'screenshot', 'move_object', 'fill_form', 'generate_post', 'generate_code', 'fix_machine', 'fix_app'];
   if (requiresArmed.includes(validation.command) && !checkArmed()) {
     await logAuditEvent({
       type: 'command',
@@ -361,6 +361,75 @@ async function handleCommand(command, data, sendResponse) {
       case 'sanitize_network':
         const sanitizedNetwork = sanitizeNetwork(data);
         sendResponse({ data: sanitizedNetwork });
+        break;
+        
+      // Agent browsing commands - Phase 2: Read-only / planning mode
+      case 'move_object':
+        // Read-only: returns information about movable objects on the page
+        sendResponse({
+          success: true,
+          message: 'MOVE_OBJECT command received (read-only mode)',
+          note: 'Actual DOM manipulation requires Phase 3 agent-browsing readiness',
+          data: { action: 'move_object', target: data?.target || 'unspecified' }
+        });
+        break;
+        
+      case 'fill_form':
+        // Read-only: returns information about forms on the page
+        sendResponse({
+          success: true,
+          message: 'FILL_FORM command received (read-only mode)',
+          note: 'Actual form filling requires Phase 3 agent-browsing readiness',
+          data: { action: 'fill_form', data: data }
+        });
+        break;
+        
+      case 'generate_post':
+        // Generate post content (read-only, just returns text)
+        const postContent = typeof data === 'string' ? data : 'New post content';
+        sendResponse({
+          success: true,
+          message: 'Generated post content',
+          data: {
+            action: 'generate_post',
+            content: sanitizeText(postContent).text,
+            verdict: 'SAFE'
+          }
+        });
+        break;
+        
+      case 'generate_code':
+        // Generate code (read-only, just returns text)
+        const codeContent = typeof data === 'string' ? data : '// Generated code';
+        sendResponse({
+          success: true,
+          message: 'Generated code',
+          data: {
+            action: 'generate_code',
+            code: sanitizeText(codeContent).text,
+            verdict: 'SAFE'
+          }
+        });
+        break;
+        
+      case 'fix_machine':
+        // Read-only: returns diagnostic information
+        sendResponse({
+          success: true,
+          message: 'FIX_MACHINE command received (read-only mode)',
+          note: 'Actual machine fixes require Phase 3 agent-browsing readiness',
+          data: { action: 'fix_machine', target: data?.target || 'system' }
+        });
+        break;
+        
+      case 'fix_app':
+        // Read-only: returns diagnostic information
+        sendResponse({
+          success: true,
+          message: 'FIX_APP command received (read-only mode)',
+          note: 'Actual application fixes require Phase 3 agent-browsing readiness',
+          data: { action: 'fix_app', target: data?.target || 'application' }
+        });
         break;
         
       default:
