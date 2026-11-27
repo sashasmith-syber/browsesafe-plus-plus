@@ -1,0 +1,114 @@
+name: Sentinel Operator Bridge CI
+
+on:
+  push:
+    branches: [ main, hardening/** ]
+    paths:
+      - 'extensions/sentinel-operator-bridge/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'extensions/sentinel-operator-bridge/**'
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        working-directory: extensions/sentinel-operator-bridge
+        run: npm ci
+      
+      - name: Run ESLint
+        working-directory: extensions/sentinel-operator-bridge
+        run: npm run lint
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        working-directory: extensions/sentinel-operator-bridge
+        run: npm ci
+      
+      - name: Run tests
+        working-directory: extensions/sentinel-operator-bridge
+        run: npm test
+
+  audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        working-directory: extensions/sentinel-operator-bridge
+        run: npm ci
+      
+      - name: Run npm audit
+        working-directory: extensions/sentinel-operator-bridge
+        run: npm audit --audit-level=moderate
+      
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        with:
+          config-path: .gitleaks.toml
+          path: extensions/sentinel-operator-bridge
+          fail-on-error: true
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: audit
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install dependencies
+        working-directory: extensions/sentinel-operator-bridge
+        run: npm ci
+      
+      - name: Create extension package
+        working-directory: extensions/sentinel-operator-bridge
+        run: |
+          mkdir -p dist
+          cp -r src/ icons/ manifest.json package.json SECURITY.md README.md CHANGELOG.md OVERVIEW.md dist/
+          echo "Extension package created in dist/"
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sentinel-operator-bridge
+          path: extensions/sentinel-operator-bridge/dist/

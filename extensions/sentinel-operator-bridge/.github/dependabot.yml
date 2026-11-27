@@ -1,0 +1,34 @@
+version: 2
+updates:
+  # Check for npm dependency updates
+  - package-ecosystem: "npm"
+    directory: "/extensions/sentinel-operator-bridge"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "sashasmith-syber"
+    commit-message:
+      prefix: "deps"
+    labels:
+      - "dependencies"
+      - "security"
+    # Only allow updates that don't break the lockfile
+    allow:
+      - dependency-type: "direct"
+      - dependency-type: "indirect"
+    # Require approval for all updates
+    require:
+      - "approval"
+
+  # Check for GitHub Actions updates
+  - package-ecosystem: "github-actions"
+    directory: "/extensions/sentinel-operator-bridge/.github/workflows"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "sashasmith-syber"
+    labels:
+      - "ci"
+      - "security"

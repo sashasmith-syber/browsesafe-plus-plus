@@ -1,0 +1,36 @@
+{
+  "name": "sentinel-operator-bridge",
+  "version": "1.2.0",
+  "description": "Chromium MV3 extension implementing strict content sanitization and operator-only command gate for agentic browsing",
+  "type": "module",
+  "scripts": {
+    "lint": "eslint extensions/sentinel-operator-bridge/src/**/*.js extensions/sentinel-operator-bridge/*.json",
+    "test": "node --test extensions/sentinel-operator-bridge/tests/*.test.mjs",
+    "test:watch": "node --test --watch extensions/sentinel-operator-bridge/tests/*.test.mjs",
+    "audit": "npm audit",
+    "gitleaks": "gitleaks detect --source extensions/sentinel-operator-bridge --verbose"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.254",
+    "eslint": "^9.0.0",
+    "vitest": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "chromium",
+    "extension",
+    "mv3",
+    "security",
+    "sanitization",
+    "browser",
+    "agent"
+  ],
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/sashasmith-syber/browsesafe-plus-plus/issues"
+  },
+  "homepage": "https://github.com/sashasmith-syber/browsesafe-plus-plus#readme"
+}
