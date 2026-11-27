@@ -79,12 +79,12 @@ export const INJECTION_KEYWORDS = [
  * Prompt injection regex patterns for detecting system override attempts
  */
 export const INJECTION_PATTERNS = [
-  /ignore\s+previous/i,
-  /ignore\s+all\s+previous/i,
-  /ignore\s+above/i,
-  /forget\s+previous/i,
-  /disregard\s+previous/i,
-  /disregard\s+all\s+previous/i,
+  /ignore.*previous/i,
+  /ignore.*all.*previous/i,
+  /ignore.*above/i,
+  /forget.*previous/i,
+  /disregard.*previous/i,
+  /disregard.*all.*previous/i,
   /system\s*:/i,
   /<\|im_start\|>/i,
   /<\[im_start\]>/i,

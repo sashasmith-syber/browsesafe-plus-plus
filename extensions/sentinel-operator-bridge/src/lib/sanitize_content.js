@@ -6,6 +6,7 @@ import {
   INVISIBLE,
   ZERO_WIDTH,
   INJECTION_KEYWORDS,
+  INJECTION_PATTERNS,
   SCRIPT_TAGS,
   DANGEROUS_ATTRS,
   HIDDEN_ATTRS,
@@ -15,31 +16,6 @@ import {
   CDATA,
   DOCTYPE
 } from './patterns.js';
-
-/**
- * Prompt injection patterns - detect attempt to override system instructions
- */
-export const INJECTION_PATTERNS = [
-  /ignore\s+previous/i,
-  /ignore\s+all\s+previous/i,
-  /ignore\s+above/i,
-  /forget\s+previous/i,
-  /disregard\s+previous/i,
-  /system\s*:/i,
-  /<\|im_start\|>/i,
-  /<\[im_start\]>/i,
-  /\[inst\]/i,
-  /<inst>/i,
-  /tool_call/i,
-  /<tool_call>/i,
-  /\[tool_call\]/i,
-  /<function\s+calls>/i,
-  /<function\s+call>/i,
-  /<invoke>/i,
-  /<invoke\s+name=/i,
-  /role\s*=\s*["']?system["']?/i,
-  /role\s*=\s*["']?assistant["']?/i
-];
 
 /**
  * Enhanced hidden style patterns

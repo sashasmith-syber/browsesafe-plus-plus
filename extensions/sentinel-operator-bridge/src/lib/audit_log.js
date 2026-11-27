@@ -1,7 +1,7 @@
 // Sentinel Operator Bridge - Audit Log Module
 // Append-only, local, exportable audit logging with secret redaction
 
-import { redactSecrets } from './sanitize_content.js';
+import { redactSecretsInText } from './sanitize_content.js';
 
 /**
  * Maximum number of audit log entries
@@ -29,7 +29,7 @@ function deepRedact(obj) {
   }
   
   if (typeof obj === 'string') {
-    return redactSecrets(obj);
+    return redactSecretsInText(obj);
   }
   
   if (Array.isArray(obj)) {
@@ -39,11 +39,17 @@ function deepRedact(obj) {
   if (typeof obj === 'object') {
     const result = {};
     for (const [key, value] of Object.entries(obj)) {
-      // Redact sensitive keys
+      // Redact sensitive keys (exact match or starts with)
       const lowerKey = key.toLowerCase();
-      if (lowerKey.includes('key') || lowerKey.includes('token') || 
-          lowerKey.includes('password') || lowerKey.includes('secret') ||
-          lowerKey.includes('credential')) {
+      const sensitiveKeywords = ['key', 'token', 'password', 'secret', 'credential', 'auth'];
+      const isSensitive = sensitiveKeywords.some(kw => 
+        lowerKey === kw || 
+        lowerKey.startsWith(kw + '_') || 
+        lowerKey.endsWith('_' + kw) ||
+        (kw === 'key' && (lowerKey === 'api_key' || lowerKey === 'apikey' || lowerKey === 'api-key'))
+      );
+      
+      if (isSensitive) {
         result[key] = REDACTED;
       } else {
         result[key] = deepRedact(value);
