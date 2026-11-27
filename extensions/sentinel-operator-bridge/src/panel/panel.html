@@ -7,68 +7,554 @@
   <link rel="stylesheet" href="panel.css">
 </head>
 <body>
-  <div class="container">
-    <header class="header">
-      <h1>Sentinel Operator Bridge</h1>
-      <p class="subtitle">Operator-Only Command Interface</p>
+  <div class="panel-container" role="region" aria-label="Sentinel Operator Bridge">
+    
+    <!-- ===================================================================
+         Header - Logo, Status, Controls
+         =================================================================== -->
+    <header class="panel-header">
+      <div class="header-logo">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 2L2 7v10c0 5.55 3.84 9.74 9 11 5.16-1.26 9-5.45 9-11V7l-10-5z"/>
+        </svg>
+      </div>
+      
+      <div class="header-title">
+        <h1>Sentinel</h1>
+        <p class="subtitle">Operator Bridge</p>
+      </div>
+      
+      <div class="header-controls">
+        <!-- Status Pill -->
+        <div class="status-pill disarmed" id="status-pill" role="status" aria-live="polite">
+          <span>Disarmed</span>
+        </div>
+        
+        <!-- Kill Switch -->
+        <button class="kill-switch-btn" id="kill-switch" aria-label="Emergency kill switch">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+          </svg>
+          <span>Kill</span>
+        </button>
+        
+        <!-- Theme Toggle -->
+        <button class="theme-toggle-btn" id="theme-toggle" aria-label="Toggle theme">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/>
+          </svg>
+        </button>
+      </div>
     </header>
     
-    <main class="main">
-      <section class="section" id="command-section">
-        <h2>Command Input</h2>
-        <p class="info">Only operator-typed input can drive actions. Page content is never executed.</p>
-        
-        <div class="input-group">
-          <label for="command">Command:</label>
-          <select id="command" class="command-select">
-            <option value="">-- Select Command --</option>
-            <option value="read_page">Read Current Page</option>
-            <option value="set_directive">Set Directive</option>
-            <option value="start_capture">Start Capture</option>
-            <option value="stop_capture">Stop Capture</option>
-            <option value="get_capture">Get Captured Content</option>
-            <option value="screenshot">Take Screenshot</option>
-          </select>
-        </div>
-        
-        <div class="input-group" id="data-group" style="display: none;">
-          <label for="data-input">Data:</label>
-          <textarea id="data-input" class="data-input" placeholder="Enter data for command..."></textarea>
-          <button id="paste-btn" class="btn btn-secondary">Paste (Sanitized)</button>
-        </div>
-        
-        <button id="execute-btn" class="btn btn-primary" disabled>Execute Command</button>
-      </section>
+    <!-- ===================================================================
+         Tabs Navigation
+         =================================================================== -->
+    <nav class="tab-nav" role="tablist" aria-label="Sentinel tabs">
+      <button 
+        class="tab-btn active" 
+        id="tab-command" 
+        role="tab" 
+        aria-selected="true" 
+        aria-controls="pane-command"
+        data-tab="command"
+      >
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-12h2v6h-2zm0 8h2v2h-2z"/>
+        </svg>
+        <span class="label">Command</span>
+      </button>
       
-      <section class="section" id="output-section">
-        <h2>Output</h2>
-        <div id="output" class="output"></div>
-        <button id="clear-btn" class="btn btn-secondary">Clear Output</button>
-      </section>
+      <button 
+        class="tab-btn" 
+        id="tab-scan" 
+        role="tab" 
+        aria-selected="false" 
+        aria-controls="pane-scan"
+        data-tab="scan"
+      >
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.94-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+        </svg>
+        <span class="label">Scan</span>
+      </button>
       
-      <section class="section" id="status-section">
-        <h2>Status</h2>
-        <div id="status" class="status">
-          <p>Service Worker: <span id="sw-status">Loading...</span></p>
-          <p>Capture Active: <span id="capture-status">Inactive</span></p>
-          <p>Captured Items: <span id="captured-count">0</span></p>
-        </div>
-      </section>
+      <button 
+        class="tab-btn" 
+        id="tab-permissions" 
+        role="tab" 
+        aria-selected="false" 
+        aria-controls="pane-permissions"
+        data-tab="permissions"
+      >
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/>
+        </svg>
+        <span class="label">Permissions</span>
+      </button>
       
-      <section class="section" id="directives-section">
-        <h2>Active Directives</h2>
-        <ul id="directives-list" class="directives-list"></ul>
-      </section>
-    </main>
+      <button 
+        class="tab-btn" 
+        id="tab-audit" 
+        role="tab" 
+        aria-selected="false" 
+        aria-controls="pane-audit"
+        data-tab="audit"
+      >
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/>
+        </svg>
+        <span class="label">Audit</span>
+      </button>
+      
+      <button 
+        class="tab-btn" 
+        id="tab-settings" 
+        role="tab" 
+        aria-selected="false" 
+        aria-controls="pane-settings"
+        data-tab="settings"
+      >
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M19.43 12.97c.04-.32.07-.64.07-.97 0-.33-.03-.66-.07-1L21 8.5v-2l-2.57.97c-.12-.3-.27-.59-.45-.86l.96-2.04c.18-.38.23-.85.12-1.28l-2.04.9c-.5-.57-1.02-1.1-1.6-1.57l.9-1.82c.34-.69.5-1.48.44-2.31l-1.88.82c-.54-.64-1.15-1.23-1.82-1.75l.88-1.72c.5-.44.96-.94 1.36-1.48L16.5 2.5c-.3-.3-.62-.57-.96-.81l1.2-.56c.55-.25 1.13-.44 1.74-.58l.25-1.75c.18-.5.25-1.05.2-1.6l1.48.72c.57-.5.97-1.17 1.18-1.87l.75-1.44c.38-.75.6-1.55.61-2.38l1.75.9c.05.45.08.9.08 1.35 0 1.35-.01 2.7-.01 4.05l-1.75-.01c.1.65.14 3.3.14 4.95 0 4.97-4.03 9-9 9-1.47 0-2.88-.3-4.2-.85l-1.1 2.25c-.53.25-1.08.47-1.65.64l-1.35-.64c-.3-.14-.6-.33-.88-.56l.56-1.35c.22-.44.38-.92.47-1.42l-1.4-1.15c-.25.48-.44.99-.56 1.53l-1.1-2.25c-.18.53-.3 1.08-.36 1.65l2.25 1.1c-.57.35-1.17.65-1.8 0l-1.1 2.25c-.53-.25-1.08-.47-1.65-.64L2.5 16.5c.3-.14.6-.33.88-.56l1.35.64c.3.14.6.33.88.56L5.5 14.85l1.1-2.25c.25-.48.44-.99.56-1.53l1.4 1.15c-.09.5-.25.98-.47 1.42l1.35.64c.22.23.5.42.88.56L8.5 12.5l1.1-2.25c.53.25 1.08.47 1.65.64l1.1-2.25c.3-.14.6-.33.88-.56l-1.35-.64c-.3-.14-.6-.33-.88-.56L10.5 5.5l1.1 2.25c.53-.25 1.08-.47 1.65-.64L15.5 7.5l1.1 2.25c.53-.25 1.08-.47 1.65-.64l1.1-2.25c.3-.14.6-.33.88-.56l-1.35-.64c-.3-.14-.6-.33-.88-.56L16.5 2.5l-1.75.9z"/>
+        </svg>
+        <span class="label">Settings</span>
+      </button>
+    </nav>
     
-    <footer class="footer">
-      <p>⚠️ <strong>SECURITY NOTICE:</strong> This extension enforces a strict operator-only command gate. 
-      Page-derived content is sanitized deterministically before reasoning. Only operator-typed 
-      input may drive actions. No click/fill/navigate primitives exist.</p>
-    </footer>
+    <!-- ===================================================================
+         Tab Content
+         =================================================================== -->
+    <main class="tab-content" role="tabpanel">
+      
+      <!-- Command Tab -->
+      <div id="pane-command" class="tab-pane active" role="tabpanel" aria-labelledby="tab-command">
+        <div class="command-tab">
+          
+          <!-- Status Bar -->
+          <div class="command-status">
+            <div class="arm-toggle">
+              <label for="arm-toggle">Armed</label>
+              <input type="checkbox" id="arm-toggle" />
+              <span class="countdown" id="arm-countdown"></span>
+            </div>
+            <div class="status-indicator">
+              <span class="status-text" id="arm-status">Disarmed</span>
+            </div>
+          </div>
+          
+          <!-- Chat Container -->
+          <div class="chat-container">
+            <!-- Chat Output -->
+            <div class="chat-output" id="chat-output" role="log" aria-live="polite">
+              <div class="empty-state">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/>
+                </svg>
+                <h3>No commands executed yet</h3>
+                <p>Type a command or use the agent functions below</p>
+              </div>
+            </div>
+            
+            <!-- Agent Functions -->
+            <div class="agent-functions" role="group" aria-label="Agent functions">
+              <button class="agent-btn" data-command="read_page" aria-label="Read current page">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+                </svg>
+                <span class="label">Read</span>
+              </button>
+              
+              <button class="agent-btn" data-command="screenshot" aria-label="Take screenshot">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/>
+                </svg>
+                <span class="label">Screenshot</span>
+              </button>
+              
+              <button class="agent-btn" data-command="start_capture" aria-label="Start capture">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                </svg>
+                <span class="label">Capture</span>
+              </button>
+              
+              <button class="agent-btn" data-command="set_directive" aria-label="Set directive">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z"/>
+                </svg>
+                <span class="label">Directive</span>
+              </button>
+              
+              <button class="agent-btn" data-command="arm" aria-label="Arm extension">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/>
+                </svg>
+                <span class="label">Arm</span>
+              </button>
+              
+              <button class="agent-btn" data-command="disarm" aria-label="Disarm extension">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/>
+                </svg>
+                <span class="label">Disarm</span>
+              </button>
+              
+              <button class="agent-btn" data-command="move_object" aria-label="Move object">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M19 15H5v2h14v-2zm0-4H5v2h14v-2zM5 7h14v2H5V7zm4-4h6v2H9V3z"/>
+                </svg>
+                <span class="label">Move</span>
+              </button>
+              
+              <button class="agent-btn" data-command="fill_form" aria-label="Fill form">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M9 11H7v6h2v-6zm4 0h-2v6h2v-6zm4 0h-2v6h2v-6zm2-7H5v2h14V4z"/>
+                </svg>
+                <span class="label">Fill</span>
+              </button>
+              
+              <button class="agent-btn" data-command="generate_post" aria-label="Generate post">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/>
+                </svg>
+                <span class="label">Post</span>
+              </button>
+              
+              <button class="agent-btn" data-command="generate_code" aria-label="Generate code">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M9.4 16.6L4.8 12l4.6-4.6 1.4 1.4L8.4 11.2 12.2 15l-2.8 2.8-1.4-1.4zM14.6 9.4L13.2 8 16 5.2l1.4 1.4L14.6 9.4zM12 2l3.5 3.5L12 9 8.5 5.5 12 2zM22 14.6L18.6 18 20 19.4 21.4 18l-2.8-2.8 1.4-1.4zM18.6 8L17.2 6.6 16 8l1.4 1.4 1.4-1.4zM14 20l-2-2 2-2 2 2-2 2zM4 18l2-2-2-2-2 2 2 2zm6-10l-2-2-2 2 2 2 2-2z"/>
+                </svg>
+                <span class="label">Code</span>
+              </button>
+              
+              <button class="agent-btn" data-command="fix_machine" aria-label="Fix machine">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+                </svg>
+                <span class="label">Fix Machine</span>
+              </button>
+              
+              <button class="agent-btn" data-command="fix_app" aria-label="Fix app">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+                </svg>
+                <span class="label">Fix App</span>
+              </button>
+            </div>
+            
+            <!-- Chat Input -->
+            <div class="chat-input-wrapper">
+              <label class="chat-input-label">Command Input</label>
+              <div class="chat-input">
+                <textarea 
+                  id="command-input" 
+                  placeholder="Type a command or select from agent functions..." 
+                  aria-label="Command input"
+                  rows="1"
+                ></textarea>
+                <button class="paste-btn" id="paste-btn" aria-label="Paste sanitized text">
+                  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            
+            <!-- Execute Button -->
+            <button 
+              class="execute-btn" 
+              id="execute-btn" 
+              disabled
+              aria-label="Execute command"
+            >
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M8 5v14l11-7z"/>
+              </svg>
+              <span>Execute Command</span>
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Page Scan Tab -->
+      <div id="pane-scan" class="tab-pane" role="tabpanel" aria-labelledby="tab-scan">
+        <div class="scan-tab">
+          <div class="scan-controls">
+            <button class="scan-btn" id="scan-btn">
+              <svg viewBox="0 0 24 24" aria-hidden="true" style="width: 20px; height: 20px; vertical-align: middle; margin-right: 8px;">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.94-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+              </svg>
+              Scan Active Tab
+            </button>
+            <button class="btn btn-secondary" id="copy-scan-btn">
+              <svg viewBox="0 0 24 24" aria-hidden="true" style="width: 18px; height: 18px; vertical-align: middle; margin-right: 6px;">
+                <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+              </svg>
+              Copy
+            </button>
+          </div>
+          
+          <div class="threat-summary">
+            <div class="threat-card clean">
+              <span class="label">Verdict</span>
+              <span class="value" id="scan-verdict">CLEAN</span>
+            </div>
+            <div class="threat-card">
+              <span class="label">Stripped</span>
+              <span class="value" id="scan-stripped">0</span>
+            </div>
+            <div class="threat-card">
+              <span class="label">Injections</span>
+              <span class="value" id="scan-injections">0</span>
+            </div>
+            <div class="threat-card">
+              <span class="label">Redactions</span>
+              <span class="value" id="scan-redactions">0</span>
+            </div>
+          </div>
+          
+          <div class="diff-viewer">
+            <div class="diff-content" id="scan-diff"></div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Permissions Tab -->
+      <div id="pane-permissions" class="tab-pane" role="tabpanel" aria-labelledby="tab-permissions">
+        <div class="permissions-tab">
+          <div class="active-site">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.94-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+            </svg>
+            <span class="domain" id="active-domain">No active site</span>
+          </div>
+          
+          <div class="permissions-grid">
+            <div class="permission-card">
+              <h3>DOM Read</h3>
+              <p class="description">Allow reading page content</p>
+              <div class="permission-toggle">
+                <label for="perm-dom-read">Enable</label>
+                <input type="checkbox" id="perm-dom-read" checked />
+              </div>
+            </div>
+            
+            <div class="permission-card">
+              <h3>Agent Actions</h3>
+              <p class="description">Allow agent to execute actions</p>
+              <div class="permission-toggle">
+                <label for="perm-agent">Enable</label>
+                <input type="checkbox" id="perm-agent" checked />
+              </div>
+            </div>
+            
+            <div class="permission-card">
+              <h3>Network Outbound</h3>
+              <p class="description">Allow network requests</p>
+              <div class="permission-toggle">
+                <label for="perm-network">Enable</label>
+                <input type="checkbox" id="perm-network" />
+              </div>
+            </div>
+          </div>
+          
+          <div class="allowlist">
+            <h3>Allowlisted Hosts</h3>
+            <div class="allowlist-item">
+              <span class="host">http://localhost:11434</span>
+              <button class="remove-btn" aria-label="Remove localhost">×</button>
+            </div>
+            <div class="allowlist-item">
+              <span class="host">http://127.0.0.1:11434</span>
+              <button class="remove-btn" aria-label="Remove 127.0.0.1">×</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Audit Log Tab -->
+      <div id="pane-audit" class="tab-pane" role="tabpanel" aria-labelledby="tab-audit">
+        <div class="audit-tab">
+          <div class="audit-controls">
+            <div class="audit-filter">
+              <label for="audit-filter">Filter:</label>
+              <select id="audit-filter">
+                <option value="all">All</option>
+                <option value="allowed">Allowed</option>
+                <option value="denied">Denied</option>
+                <option value="kill">Kill Switch</option>
+              </select>
+            </div>
+            <button class="btn btn-secondary" id="export-audit-btn">
+              <svg viewBox="0 0 24 24" aria-hidden="true" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 6px;">
+                <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+              </svg>
+              Export JSON
+            </button>
+            <button class="btn btn-danger" id="clear-audit-btn">
+              <svg viewBox="0 0 24 24" aria-hidden="true" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 6px;">
+                <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+              </svg>
+              Clear
+            </button>
+          </div>
+          
+          <div class="audit-table" role="region" aria-label="Audit log">
+            <table>
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Type</th>
+                  <th>Action</th>
+                  <th>Command</th>
+                </tr>
+              </thead>
+              <tbody id="audit-log-body">
+                <tr>
+                  <td colspan="4">
+                    <div class="empty-state">
+                      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/>
+                      </svg>
+                      <h3>No audit entries yet</h3>
+                      <p>Commands and events will appear here</p>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Settings Tab -->
+      <div id="pane-settings" class="tab-pane" role="tabpanel" aria-labelledby="tab-settings">
+        <div class="settings-tab">
+          
+          <!-- Backend Configuration -->
+          <div class="settings-section">
+            <h2>Backend Configuration</h2>
+            
+            <div class="settings-row">
+              <label for="backend-url">Backend URL</label>
+              <p class="description">URL for the model backend (e.g., http://localhost:11434)</p>
+              <input 
+                type="url" 
+                id="backend-url" 
+                value="http://localhost:11434"
+                placeholder="http://localhost:11434"
+              />
+            </div>
+            
+            <div class="settings-row">
+              <label for="model-name">Model Name</label>
+              <p class="description">Name of the model to use</p>
+              <input 
+                type="text" 
+                id="model-name" 
+                value="mistral"
+                placeholder="mistral"
+              />
+            </div>
+          </div>
+          
+          <!-- Auto-Disarm -->
+          <div class="settings-section">
+            <h2>Auto-Disarm</h2>
+            
+            <div class="settings-row">
+              <label for="auto-disarm">Duration (minutes)</label>
+              <p class="description">Automatically disarm after this duration</p>
+              <select id="auto-disarm">
+                <option value="1">1 minute</option>
+                <option value="5" selected>5 minutes</option>
+                <option value="10">10 minutes</option>
+                <option value="15">15 minutes</option>
+                <option value="30">30 minutes</option>
+                <option value="60">1 hour</option>
+                <option value="0">Never</option>
+              </select>
+            </div>
+          </div>
+          
+          <!-- Execution Modes -->
+          <div class="settings-section">
+            <h2>Execution Modes</h2>
+            
+            <div class="toggle-row">
+              <label for="step-by-step">Step-by-Step Approval</label>
+              <div class="toggle">
+                <input type="checkbox" id="step-by-step" checked />
+                <span></span>
+              </div>
+            </div>
+            <p class="description">Require confirmation for each action</p>
+            
+            <div class="toggle-row">
+              <label for="dry-run">Dry Run Mode</label>
+              <div class="toggle">
+                <input type="checkbox" id="dry-run" />
+                <span></span>
+              </div>
+            </div>
+            <p class="description">Show actions without executing them</p>
+          </div>
+          
+          <!-- Advanced Settings -->
+          <div class="settings-section">
+            <h2>Advanced</h2>
+            
+            <div class="toggle-row">
+              <label for="verbose-logging">Verbose Logging</label>
+              <div class="toggle">
+                <input type="checkbox" id="verbose-logging" />
+                <span></span>
+              </div>
+            </div>
+            
+            <div class="toggle-row">
+              <label for="audit-rotation">Enable Audit Rotation</label>
+              <div class="toggle">
+                <input type="checkbox" id="audit-rotation" checked />
+                <span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
   </div>
   
+  <!-- Modal Container -->
+  <div class="modal-backdrop hidden" id="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal" id="modal">
+      <div class="modal-header">
+        <h2 id="modal-title">Confirmation</h2>
+        <button class="modal-close" id="modal-close" aria-label="Close modal">
+          <svg viewBox="0 0 24 24" aria-hidden="true" style="width: 20px; height: 20px;">
+            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body" id="modal-body">
+        <!-- Content will be inserted here -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="modal-cancel">Cancel</button>
+        <button class="btn btn-primary" id="modal-confirm">Confirm</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Toast Container -->
+  <div class="toast-container" id="toast-container" role="status" aria-live="polite"></div>
+  
+  <!-- Scripts -->
   <script src="../lib/sanitize_content.js" type="module"></script>
+  <script src="../lib/security.js" type="module"></script>
+  <script src="../lib/audit_log.js" type="module"></script>
+  <script src="../lib/network_guard.js" type="module"></script>
   <script src="panel.js" type="module"></script>
 </body>
 </html>
