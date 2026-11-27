@@ -1,5 +1,6 @@
 // Sentinel Operator Bridge - Security Module Tests
-import { assert, describe, it, beforeEach, afterEach } from 'node:test';
+import { describe, it, beforeEach, afterEach } from 'node:test';
+import assert from 'node:assert';
 
 // Mock chrome.runtime
 const mockChrome = {

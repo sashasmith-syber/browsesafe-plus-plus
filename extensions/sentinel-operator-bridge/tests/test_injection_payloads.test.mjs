@@ -1,5 +1,6 @@
 // Sentinel Operator Bridge - Injection Payload Tests
-import { assert, describe, it, beforeEach } from 'node:test';
+import { describe, it, beforeEach } from 'node:test';
+import assert from 'node:assert';
 
 // Import sanitization functions
 import {
