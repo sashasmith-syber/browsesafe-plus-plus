@@ -12,6 +12,7 @@ export default [
         self: 'readonly',
         caches: 'readonly',
         fetch: 'readonly',
+        console: 'writable',
         // DOM globals (for content scripts)
         document: 'readonly',
         window: 'readonly',
@@ -21,7 +22,13 @@ export default [
         __dirname: 'readonly',
         __filename: 'readonly',
         process: 'readonly',
-        Buffer: 'readonly'
+        Buffer: 'readonly',
+        global: 'readonly',
+        afterEach: 'readonly',
+        beforeEach: 'readonly',
+        describe: 'readonly',
+        test: 'readonly',
+        it: 'readonly'
       },
       parserOptions: {
         ecmaVersion: 'latest',
@@ -30,18 +37,17 @@ export default [
     },
     rules: {
       // Security rules
-      'no-inner-html': 'error',
       'no-eval': 'error',
       'no-implied-eval': 'error',
       'no-new-func': 'error',
-      
+
       // Code quality
       'no-console': 'warn',
       'prefer-const': 'error',
       'no-var': 'error',
       'eqeqeq': 'error',
       'strict': ['error', 'global'],
-      
+
       // Best practices
       'no-unused-vars': 'warn',
       'no-undef': 'error',
