@@ -1,120 +1,216 @@
 // Sentinel Operator Bridge - Service Worker
 // Enforcement point for operator-only command gate
+// Strict fail-closed security: only extension UI can invoke commands
 
 import { sanitizeContent, sanitizeText } from '../lib/sanitize_content.js';
 import { sanitizeNetwork } from '../lib/sanitize_network.js';
+import {
+  ALLOWED_COMMANDS,
+  isOperatorSender,
+  validateCommandMessage,
+  createFailClosedResponse,
+  initSecurityState,
+  persistSecurityState,
+  isArmed,
+  STATE_KEYS
+} from '../lib/security.js';
+import { logAuditEvent, REDACTED } from '../lib/audit_log.js';
 
 /**
- * Allowed commands from the operator panel only
- */
-const ALLOWED_COMMANDS = new Set([
-  'read_page',
-  'set_directive',
-  'start_capture',
-  'stop_capture',
-  'get_capture',
-  'screenshot',
-  'sanitize_content',
-  'sanitize_network'
-]);
-
-/**
- * State management
+ * State management - persisted in chrome.storage.session
+ * Service workers sleep after ~30s inactivity, so globals are lost
  */
 let state = {
   captureActive: false,
   capturedContent: [],
   directives: [],
-  currentTab: null
+  currentTab: null,
+  armed: false,
+  armedUntil: 0,
+  killSwitch: false
 };
 
-/**
- * Check if sender is from a tab (page context) - untrusted
- * @param {Object} sender - Message sender
- * @returns {boolean}
- */
-function isFromTab(sender) {
-  return sender.tab && sender.tab.id !== undefined;
-}
+// AbortController for in-flight work
+let abortController = null;
 
 /**
- * Check if sender is from the side panel (operator) - trusted
- * @param {Object} sender - Message sender
- * @returns {boolean}
+ * Hydrate state from storage on worker wake
  */
-function isFromPanel(sender) {
-  return sender.url && sender.url.includes('sidepanel.html');
-}
-
-/**
- * Validate command is allowed
- * @param {string} command - Command to validate
- * @returns {boolean}
- */
-function isAllowedCommand(command) {
-  return ALLOWED_COMMANDS.has(command);
-}
-
-/**
- * Handle messages from content scripts (data only, never commands)
- */
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  // Any message from a tab is treated as DATA, never a command
-  if (isFromTab(sender)) {
-    // Sanitize all content from tabs
-    if (message.type === 'page_content') {
-      const sanitized = sanitizeContent(message.data);
-      
-      // Store if capture is active
-      if (state.captureActive && state.currentTab === sender.tab.id) {
-        state.capturedContent.push({
-          tabId: sender.tab.id,
-          url: sender.tab.url,
-          timestamp: Date.now(),
-          ...sanitized
-        });
-      }
-      
-      sendResponse({
-        type: 'sanitized_content',
-        data: sanitized,
-        fromTab: true
+async function hydrateState() {
+  try {
+    const stored = await initSecurityState();
+    state.armed = stored.armed || false;
+    state.armedUntil = stored.armedUntil || 0;
+    state.killSwitch = stored.killSwitch || false;
+    
+    // Clear expired armed state
+    if (state.armed && Date.now() > state.armedUntil) {
+      state.armed = false;
+      state.armedUntil = 0;
+      await persistSecurityState({
+        armed: false,
+        armedUntil: 0,
+        killSwitch: state.killSwitch
       });
-      return;
     }
     
-    if (message.type === 'network_request') {
-      const sanitized = sanitizeNetwork(message.data);
-      sendResponse({
-        type: 'sanitized_network',
-        data: sanitized,
-        fromTab: true
-      });
-      return;
-    }
+    console.log('Sentinel: State hydrated from storage');
+  } catch (error) {
+    console.error('Sentinel: State hydration error:', error);
+    // Fail-closed: start with disarmed state
+    state.armed = false;
+    state.armedUntil = 0;
+    state.killSwitch = false;
+  }
+}
+
+/**
+ * Persist security state
+ */
+async function saveState() {
+  try {
+    await persistSecurityState({
+      armed: state.armed,
+      armedUntil: state.armedUntil,
+      killSwitch: state.killSwitch
+    });
+  } catch (error) {
+    console.error('Sentinel: State persistence error:', error);
+  }
+}
+
+/**
+ * Check if extension is currently armed and not killed
+ * @returns {boolean}
+ */
+function checkArmed() {
+  // Check kill switch first
+  if (state.killSwitch) {
+    return false;
+  }
+  
+  // Check armed state with timeout
+  if (!state.armed) {
+    return false;
+  }
+  
+  if (state.armedUntil && Date.now() > state.armedUntil) {
+    state.armed = false;
+    state.armedUntil = 0;
+    saveState();
+    return false;
+  }
+  
+  return true;
+}
+
+/**
+ * Abort all in-flight work
+ */
+function abortInFlightWork() {
+  if (abortController) {
+    abortController.abort();
+    abortController = null;
+  }
+}
+
+/**
+ * Handle messages with strict validation
+ */
+chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
+  // Hydrate state on every message (worker may have slept)
+  await hydrateState();
+  
+  // ALWAYS validate sender first - fail closed
+  if (!isOperatorSender(sender)) {
+    await logAuditEvent({
+      type: 'message',
+      action: 'REJECTED',
+      reason: 'Unauthorized sender',
+      senderId: sender?.id,
+      senderUrl: sender?.url,
+      timestamp: Date.now()
+    });
     
-    // Any other message from tab is ignored (security)
-    sendResponse({ error: 'Messages from tabs are data-only' });
+    sendResponse(createFailClosedResponse('Unauthorized sender'));
     return;
   }
   
-  // Handle messages from panel (operator)
-  if (isFromPanel(sender) || !sender.tab) {
-    const { command, data } = message;
+  // Validate message structure and command
+  const validation = validateCommandMessage(message);
+  
+  if (!validation.valid) {
+    await logAuditEvent({
+      type: 'message',
+      action: 'REJECTED',
+      reason: validation.error,
+      command: validation.command,
+      timestamp: Date.now()
+    });
     
-    // Validate command is in allowlist
-    if (!isAllowedCommand(command)) {
-      sendResponse({ error: `Command '${command}' not allowed` });
-      return;
-    }
-    
-    // Execute command
-    handleCommand(command, data, sendResponse);
-    return true; // Keep message channel open for async response
+    sendResponse(createFailClosedResponse(validation.error));
+    return;
   }
   
-  // Unknown sender - reject
-  sendResponse({ error: 'Unknown sender' });
+  // Handle ping separately
+  if (validation.command === 'ping') {
+    sendResponse({ type: 'pong', status: 'ready' });
+    return;
+  }
+  
+  // Check kill switch before any command
+  if (state.killSwitch) {
+    await logAuditEvent({
+      type: 'kill_switch',
+      action: 'BLOCKED',
+      command: validation.command,
+      timestamp: Date.now()
+    });
+    
+    sendResponse(createFailClosedResponse('Kill switch engaged - all actions blocked'));
+    return;
+  }
+  
+  // Check if armed (for dangerous commands)
+  const requiresArmed = ['read_page', 'set_directive', 'start_capture', 'screenshot'];
+  if (requiresArmed.includes(validation.command) && !checkArmed()) {
+    await logAuditEvent({
+      type: 'command',
+      action: 'BLOCKED',
+      reason: 'Not armed',
+      command: validation.command,
+      timestamp: Date.now()
+    });
+    
+    sendResponse(createFailClosedResponse('Extension not armed - use arm command first'));
+    return;
+  }
+  
+  // Execute command
+  try {
+    const result = await handleCommand(validation.command, message.data, sendResponse);
+    
+    await logAuditEvent({
+      type: 'command',
+      action: 'ALLOWED',
+      command: validation.command,
+      timestamp: Date.now()
+    });
+    
+    return result;
+  } catch (error) {
+    console.error('Sentinel: Command execution error:', error);
+    
+    await logAuditEvent({
+      type: 'command',
+      action: 'ERROR',
+      command: validation.command,
+      error: REDACTED(error.message),
+      timestamp: Date.now()
+    });
+    
+    sendResponse(createFailClosedResponse(error.message));
+  }
 });
 
 /**
@@ -123,9 +219,50 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 async function handleCommand(command, data, sendResponse) {
   try {
     switch (command) {
+      case 'arm':
+        state.armed = true;
+        state.armedUntil = Date.now() + (data?.duration || 300000); // Default 5 minutes
+        await saveState();
+        
+        sendResponse({
+          success: true,
+          armed: true,
+          armedUntil: state.armedUntil
+        });
+        break;
+        
+      case 'disarm':
+        state.armed = false;
+        state.armedUntil = 0;
+        await saveState();
+        
+        // Abort any in-flight work
+        abortInFlightWork();
+        
+        sendResponse({ success: true, armed: false });
+        break;
+        
+      case 'kill_switch':
+        state.killSwitch = true;
+        state.armed = false;
+        state.armedUntil = 0;
+        await saveState();
+        
+        // Abort all in-flight work
+        abortInFlightWork();
+        
+        await logAuditEvent({
+          type: 'kill_switch',
+          action: 'ENGAGED',
+          timestamp: Date.now()
+        });
+        
+        sendResponse({ success: true, killSwitch: true });
+        break;
+        
       case 'read_page':
-        // Read page content from current tab
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        // Re-verify tab using lastFocusedWindow
+        const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
         if (!tab) {
           sendResponse({ error: 'No active tab' });
           return;
@@ -133,22 +270,33 @@ async function handleCommand(command, data, sendResponse) {
         
         state.currentTab = tab.id;
         
+        // Inject content script on-demand
         const result = await chrome.scripting.executeScript({
           target: { tabId: tab.id },
-          func: () => document.documentElement.outerHTML
+          files: ['src/content/content_script.js']
         });
         
         if (result && result[0] && result[0].result) {
           const sanitized = sanitizeContent(result[0].result);
           sendResponse({ data: sanitized });
         } else {
-          sendResponse({ error: 'Failed to read page' });
+          // Fallback: try to read directly
+          const directResult = await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            func: () => document.documentElement.outerHTML
+          });
+          
+          if (directResult && directResult[0] && directResult[0].result) {
+            const sanitized = sanitizeContent(directResult[0].result);
+            sendResponse({ data: sanitized });
+          } else {
+            sendResponse({ error: 'Failed to read page' });
+          }
         }
         break;
         
       case 'set_directive':
         if (typeof data === 'string') {
-          // Sanitize directive text
           const sanitized = sanitizeText(data);
           if (sanitized.verdict === 'SAFE') {
             state.directives.push({
@@ -157,7 +305,10 @@ async function handleCommand(command, data, sendResponse) {
             });
             sendResponse({ success: true, directives: state.directives });
           } else {
-            sendResponse({ error: 'Directive contains unsafe content', findings: sanitized.findings });
+            sendResponse({ 
+              error: 'Directive contains unsafe content', 
+              findings: sanitized.findings 
+            });
           }
         } else {
           sendResponse({ error: 'Directive must be a string' });
@@ -188,7 +339,7 @@ async function handleCommand(command, data, sendResponse) {
         break;
         
       case 'screenshot':
-        const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        const [activeTab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
         if (!activeTab) {
           sendResponse({ error: 'No active tab' });
           return;
@@ -213,13 +364,19 @@ async function handleCommand(command, data, sendResponse) {
         break;
         
       default:
-        sendResponse({ error: `Unknown command: ${command}` });
+        sendResponse(createFailClosedResponse(`Unknown command: ${command}`));
     }
+    return true; // Keep message channel open for async response
   } catch (error) {
     console.error('Command execution error:', error);
-    sendResponse({ error: error.message });
+    throw error;
   }
 }
 
 // Initialize
 console.log('Sentinel Operator Bridge service worker loaded');
+
+// Hydrate state on startup
+hydrateState().catch(err => {
+  console.error('Sentinel: Initial hydration error:', err);
+});
