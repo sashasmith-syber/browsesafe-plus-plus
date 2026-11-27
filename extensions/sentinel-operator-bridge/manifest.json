@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Sentinel Operator Bridge",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "Chromium MV3 extension implementing strict content sanitization and operator-only command gate for agentic browsing",
   "permissions": [
     "sidePanel",
