@@ -64,7 +64,42 @@ export const INJECTION_KEYWORDS = [
   'xmlhttprequest',
   'iframe',
   'object',
-  'embed'
+  'embed',
+  'ignore previous',
+  'forget previous',
+  'disregard previous',
+  'ignore all previous',
+  'ignore above',
+  'tool_call',
+  'im_start',
+  'inst'
+];
+
+/**
+ * Prompt injection regex patterns for detecting system override attempts
+ */
+export const INJECTION_PATTERNS = [
+  /ignore\s+previous/i,
+  /ignore\s+all\s+previous/i,
+  /ignore\s+above/i,
+  /forget\s+previous/i,
+  /disregard\s+previous/i,
+  /disregard\s+all\s+previous/i,
+  /system\s*:/i,
+  /<\|im_start\|>/i,
+  /<\[im_start\]>/i,
+  /\[inst\]/i,
+  /<inst>/i,
+  /<\/inst>/i,
+  /tool_call/i,
+  /<tool_call>/i,
+  /\[tool_call\]/i,
+  /<function\s+calls>/i,
+  /<function\s+call>/i,
+  /<invoke>/i,
+  /role\s*=\s*["']?system["']?/i,
+  /role\s*=\s*["']?assistant["']?/i,
+  /role\s*=\s*["']?user["']?/i
 ];
 
 export const SCRIPT_TAGS = new Set([

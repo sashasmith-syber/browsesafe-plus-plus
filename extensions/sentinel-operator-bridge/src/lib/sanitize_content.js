@@ -1,5 +1,5 @@
 // Sentinel Operator Bridge - Content Sanitizer
-// Faithful JS port of Python sanitize_content.py
+// Faithful JS port of Python sanitize_content.py with enhanced security
 // Tolerant HTML tokenizer mirroring html.parser semantics
 
 import {
@@ -15,6 +15,109 @@ import {
   CDATA,
   DOCTYPE
 } from './patterns.js';
+
+/**
+ * Prompt injection patterns - detect attempt to override system instructions
+ */
+export const INJECTION_PATTERNS = [
+  /ignore\s+previous/i,
+  /ignore\s+all\s+previous/i,
+  /ignore\s+above/i,
+  /forget\s+previous/i,
+  /disregard\s+previous/i,
+  /system\s*:/i,
+  /<\|im_start\|>/i,
+  /<\[im_start\]>/i,
+  /\[inst\]/i,
+  /<inst>/i,
+  /tool_call/i,
+  /<tool_call>/i,
+  /\[tool_call\]/i,
+  /<function\s+calls>/i,
+  /<function\s+call>/i,
+  /<invoke>/i,
+  /<invoke\s+name=/i,
+  /role\s*=\s*["']?system["']?/i,
+  /role\s*=\s*["']?assistant["']?/i
+];
+
+/**
+ * Enhanced hidden style patterns
+ */
+const HIDDEN_STYLE_PATTERNS = [
+  'display:none',
+  'display: none',
+  'visibility:hidden',
+  'visibility: hidden',
+  'opacity:0',
+  'opacity: 0',
+  'opacity:0.0',
+  'font-size:0',
+  'font-size: 0',
+  'font-size:0px',
+  'text-indent:-9999',
+  'text-indent: -9999',
+  'text-indent:-9999px',
+  'left:-9999',
+  'left: -9999',
+  'left:-9999px',
+  'position:absolute',
+  'position: absolute',
+  'clip:rect(0,0,0,0)',
+  'clip: rect(0, 0, 0, 0)',
+  'overflow:hidden',
+  'overflow: hidden',
+  'height:0',
+  'height: 0',
+  'width:0',
+  'width: 0',
+  'color:transparent',
+  'color: transparent',
+  'color:rgba\(0,0,0,0\)',
+  'color:#0000',
+  'color:#00000000'
+];
+
+/**
+ * Same-color text detection (text color matches background)
+ * This is a simplified heuristic
+ */
+function isSameColorStyle(styleValue) {
+  const lower = styleValue.toLowerCase();
+  // Look for color and background that are the same
+  const colorMatch = lower.match(/color:\s*([^;]+)/);
+  const bgMatch = lower.match(/background[^-]*:\s*([^;]+)/);
+  
+  if (colorMatch && bgMatch) {
+    const color = colorMatch[1].trim();
+    const bg = bgMatch[1].trim();
+    
+    // Simple exact match
+    if (color === bg) {
+      return true;
+    }
+    
+    // Both are white-ish
+    if ((color.includes('#fff') || color.includes('white') || color.includes('rgb(255') || color.includes('255,255,255')) &&
+        (bg.includes('#fff') || bg.includes('white') || bg.includes('rgb(255') || bg.includes('255,255,255'))) {
+      return true;
+    }
+    
+    // Both are black-ish
+    if ((color.includes('#000') || color.includes('black') || color.includes('rgb(0') || color.includes('0,0,0')) &&
+        (bg.includes('#000') || bg.includes('black') || bg.includes('rgb(0') || bg.includes('0,0,0'))) {
+      return true;
+    }
+    
+    // Both are transparent
+    if ((color.includes('transparent') || color.includes('rgba(0,0,0,0') || color.includes('#00000000')) &&
+        (bg.includes('transparent') || bg.includes('rgba(0,0,0,0') || bg.includes('#00000000'))) {
+      return true;
+    }
+  }
+  
+  return false;
+}
 
 /**
  * Decode HTML entities (numeric and named)
@@ -97,6 +200,20 @@ export function hasInjectionKeywords(text) {
 }
 
 /**
+ * Check if text matches prompt injection patterns
+ * @param {string} text - Text to check
+ * @returns {boolean} True if injection patterns found
+ */
+export function hasInjectionPatterns(text) {
+  for (const pattern of INJECTION_PATTERNS) {
+    if (pattern.test(text)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
  * Check if tag is a script/dangerous tag
  * @param {string} tag - Tag name
  * @returns {boolean} True if dangerous
@@ -127,11 +244,9 @@ function isDangerousAttr(attr) {
  */
 function isHiddenAttrName(attr) {
   const lowerAttr = attr.toLowerCase();
-  // Check exact matches
   if (HIDDEN_ATTRS.has(lowerAttr)) {
     return true;
   }
-  // Check data-* prefix (HIDDEN_ATTRS contains 'data-')
   for (const hidden of HIDDEN_ATTRS) {
     if (hidden === 'data-' && lowerAttr.startsWith('data-')) {
       return true;
@@ -141,16 +256,28 @@ function isHiddenAttrName(attr) {
 }
 
 /**
- * Check if a style attribute value indicates hidden content
+ * Enhanced hidden style detection
  * @param {string} value - Style value
  * @returns {boolean} True if hidden
  */
-function isHiddenStyle(value) {
-  const lowerValue = value.toLowerCase();
-  return lowerValue.includes('display:none') ||
-         lowerValue.includes('visibility:hidden') ||
-         lowerValue.includes('opacity:0') ||
-         lowerValue.includes('hidden');
+export function isHiddenStyle(value) {
+  if (!value) return false;
+  
+  const lower = value.toLowerCase();
+  
+  // Check against known hidden patterns
+  for (const pattern of HIDDEN_STYLE_PATTERNS) {
+    if (lower.includes(pattern)) {
+      return true;
+    }
+  }
+  
+  // Check for same-color text (camouflage)
+  if (isSameColorStyle(value)) {
+    return true;
+  }
+  
+  return false;
 }
 
 /**
@@ -204,40 +331,39 @@ function tokenizeHTML(html) {
           tagName = tagContent.slice(0, spaceIndex);
           // Parse attributes
           const attrStr = tagContent.slice(spaceIndex + 1);
-          // Use a simple state machine to parse attributes
-          let i = 0;
-          while (i < attrStr.length) {
+          let j = 0;
+          while (j < attrStr.length) {
             // Skip whitespace
-            while (i < attrStr.length && attrStr[i].match(/\s/)) i++;
-            if (i >= attrStr.length) break;
+            while (j < attrStr.length && attrStr[j].match(/\s/)) j++;
+            if (j >= attrStr.length) break;
             
             // Read attribute name
-            let attrStart = i;
-            while (i < attrStr.length && !attrStr[i].match(/\s|=/)) i++;
-            const attrName = attrStr.slice(attrStart, i);
+            let attrStart = j;
+            while (j < attrStr.length && !attrStr[j].match(/\s|=/)) j++;
+            const attrName = attrStr.slice(attrStart, j);
             
             // Skip whitespace
-            while (i < attrStr.length && attrStr[i].match(/\s/)) i++;
+            while (j < attrStr.length && attrStr[j].match(/\s/)) j++;
             
             // Check for = sign
-            if (i < attrStr.length && attrStr[i] === '=') {
-              i++; // Skip =
+            if (j < attrStr.length && attrStr[j] === '=') {
+              j++; // Skip =
               // Skip whitespace
-              while (i < attrStr.length && attrStr[i].match(/\s/)) i++;
+              while (j < attrStr.length && attrStr[j].match(/\s/)) j++;
               
               // Read value
-              if (i < attrStr.length) {
-                if (attrStr[i] === '"' || attrStr[i] === "'") {
-                  const quote = attrStr[i];
-                  i++;
-                  attrStart = i;
-                  while (i < attrStr.length && attrStr[i] !== quote) i++;
-                  attrs[attrName] = attrStr.slice(attrStart, i);
-                  i++; // Skip closing quote
+              if (j < attrStr.length) {
+                if (attrStr[j] === '"' || attrStr[j] === "'") {
+                  const quote = attrStr[j];
+                  j++;
+                  attrStart = j;
+                  while (j < attrStr.length && attrStr[j] !== quote) j++;
+                  attrs[attrName] = attrStr.slice(attrStart, j);
+                  j++; // Skip closing quote
                 } else {
-                  attrStart = i;
-                  while (i < attrStr.length && !attrStr[i].match(/\s/)) i++;
-                  attrs[attrName] = attrStr.slice(attrStart, i);
+                  attrStart = j;
+                  while (j < attrStr.length && !attrStr[j].match(/\s/)) j++;
+                  attrs[attrName] = attrStr.slice(attrStart, j);
                 }
               }
             } else {
@@ -310,7 +436,8 @@ export function sanitizeContent(html, options = {}) {
     droppedAttrs: new Set(),
     hiddenChars: 0,
     injectionSpans: [],
-    secretRedactions: 0
+    secretRedactions: 0,
+    hiddenElements: 0
   };
   
   // First pass: count invisible chars in original
@@ -340,13 +467,21 @@ export function sanitizeContent(html, options = {}) {
               findings.droppedAttrs.add(attr);
               hasDangerous = true;
             }
+            
+            // Enhanced hidden detection
             if (isHiddenAttrName(attr)) {
-              // Check if it's a boolean hidden attribute or has hidden value
               if (attr.toLowerCase() === 'hidden' || 
                   attr.toLowerCase() === 'aria-hidden' ||
-                  (attr.toLowerCase() === 'style' && isHiddenStyle(value))) {
+                  attr.toLowerCase() === 'inert') {
+                isHidden = true;
+              } else if (attr.toLowerCase() === 'style' && isHiddenStyle(value)) {
                 isHidden = true;
               }
+            }
+            
+            // Check for same-color camouflage in style
+            if (attr.toLowerCase() === 'style' && isSameColorStyle(value)) {
+              isHidden = true;
             }
           }
           
@@ -357,6 +492,7 @@ export function sanitizeContent(html, options = {}) {
           } else if (isHidden && removeHidden) {
             // Drop hidden tags and their content
             findings.droppedTags.add(token.tag);
+            findings.hiddenElements++;
             inHiddenTag = true;
           } else {
             // Keep the tag but sanitize attributes
@@ -381,11 +517,9 @@ export function sanitizeContent(html, options = {}) {
       case 'endTag':
         if (inDangerousTag && isDangerousTag(token.tag)) {
           inDangerousTag = false;
-        } else if (inHiddenTag && token.tag === 'div') {
-          // End of hidden div
+        } else if (inHiddenTag && token.tag === inHiddenTag) {
           inHiddenTag = false;
         } else if (inHiddenTag) {
-          // End of any hidden tag
           inHiddenTag = false;
         } else {
           result += `</${token.tag}>`;
@@ -400,14 +534,14 @@ export function sanitizeContent(html, options = {}) {
         
         let textContent = token.value;
         
-        // Check for injection keywords BEFORE normalization
-        const hasInjections = hasInjectionKeywords(textContent);
+        // Check for injection keywords and patterns BEFORE normalization
+        const hasInjections = hasInjectionKeywords(textContent) || hasInjectionPatterns(textContent);
         
         // Normalize text content
         textContent = normalizeText(textContent);
         
         // Check again after normalization
-        const stillHasInjections = hasInjections || hasInjectionKeywords(textContent);
+        const stillHasInjections = hasInjections || hasInjectionKeywords(textContent) || hasInjectionPatterns(textContent);
         
         // Wrap injection keywords
         if (stillHasInjections && wrapInjections) {
@@ -416,7 +550,7 @@ export function sanitizeContent(html, options = {}) {
             end: result.length + textContent.length,
             text: textContent
           });
-          textContent = `⟦UNTRUSTED-INSTRUCTION⟧${textContent}⟦/UNTRUSTED-INSTRUCTION⟧`;
+          textContent = `⟦UNTRUSTED-PAGE_DATA⟧${textContent}⟦/UNTRUSTED-PAGE_DATA⟧`;
         }
         
         // Redact secrets
@@ -438,7 +572,8 @@ export function sanitizeContent(html, options = {}) {
     html: result,
     findings,
     verdict: findings.droppedTags.size > 0 || findings.droppedAttrs.size > 0 || 
-             findings.injectionSpans.length > 0 || findings.secretRedactions > 0 ? 
+             findings.injectionSpans.length > 0 || findings.secretRedactions > 0 ||
+             findings.hiddenElements > 0 ? 
              'UNSAFE' : 'SAFE'
   };
 }
@@ -448,7 +583,7 @@ export function sanitizeContent(html, options = {}) {
  * @param {string} text - Text to redact
  * @returns {string} Text with secrets redacted
  */
-function redactSecretsInText(text) {
+export function redactSecretsInText(text) {
   // SSN
   text = text.replace(/\b\d{3}-\d{2}-\d{4}\b/g, '[REDACTED_SSN]');
   
@@ -480,8 +615,21 @@ function redactSecretsInText(text) {
   // AWS keys
   text = text.replace(/AKIA[0-9A-Z]{16}/g, '[REDACTED_AWS_KEY]');
   
+  // GitHub tokens
+  text = text.replace(/ghp_[A-Za-z0-9]{36}/gi, '[REDACTED_GITHUB_TOKEN]');
+  text = text.replace(/github_pat_[A-Za-z0-9]{22}_[A-Za-z0-9]{59}/i, '[REDACTED_GITHUB_TOKEN]');
+  
+  // Google API keys
+  text = text.replace(/AIza[0-9A-Za-z\-_]{35}/g, '[REDACTED_GOOGLE_API_KEY]');
+  
+  // OpenAI keys
+  text = text.replace(/sk-[A-Za-z0-9]{48}/g, '[REDACTED_OPENAI_KEY]');
+  
+  // Private keys (PEM format)
+  text = text.replace(/-----BEGIN\s+(?:RSA\s+)?PRIVATE\s+KEY-----.*-----END\s+(?:RSA\s+)?PRIVATE\s+KEY-----/gs, '[REDACTED_PRIVATE_KEY]');
+  
   // Generic secret patterns
-  text = text.replace(/(?:secret|password|token|key|api[_-]?key)\s*[:=]\s*['"]?[^\s'"]+['"]?/gi, '$1=[REDACTED]');
+  text = text.replace(/(?:secret|password|token|key|api[_-]?key|auth|credential)\s*[:=]\s*['"]?[^\s'"]+['"]?/gi, '$1=[REDACTED]');
   
   // API keys (32+ hex chars)
   text = text.replace(/\b[A-Fa-f0-9]{32,}\b/g, '[REDACTED_API_KEY]');
@@ -496,7 +644,7 @@ function redactSecretsInText(text) {
  */
 export function sanitizeText(text) {
   const normalized = normalizeText(text);
-  const hasInjections = hasInjectionKeywords(normalized);
+  const hasInjections = hasInjectionKeywords(normalized) || hasInjectionPatterns(normalized);
   const redacted = redactSecretsInText(normalized);
   
   return {
@@ -515,5 +663,8 @@ export default {
   sanitizeText,
   decodeEntities,
   normalizeText,
-  hasInjectionKeywords
+  hasInjectionKeywords,
+  hasInjectionPatterns,
+  isHiddenStyle,
+  redactSecretsInText
 };
